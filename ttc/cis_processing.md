@@ -66,13 +66,19 @@ WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) sha
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '514'
-                                ORDER BY shape_id, stop_sequence)
+                                ORDER BY shape_id, stop_sequence), 
+stops514 AS (
+SELECT DISTINCT(s1.stop_id) stop_id
+FROM dzou2.dd_514_stop_angle s1, dzou2.dd_514_stop_angle s2
+WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
+)
 
 SELECT shape_id, direction_id, ARRAY_AGG(stop_name ORDER BY stop_sequence)
-FROM distinct_stop_patterns
-NATURAL JOIN gtfs_raph.stops_20171004
+FROM distinct_stop_patterns d
+NATURAL JOIN gtfs_raph.stops_20171004 r
+WHERE d.stop_id NOT IN (SELECT stop_id FROM stops514) OR d.stop_id IN (6113, 15439, 15356, 13268)
 GROUP BY shape_id, direction_id
-ORDER BY direction_id
+ORDER BY direction_id;
 ```
 
 Result:
@@ -96,13 +102,31 @@ WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) sha
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '514'
-                                ORDER BY shape_id, stop_sequence)
+                                ORDER BY shape_id, stop_sequence), 
+stops514 AS (
+SELECT DISTINCT(s1.stop_id) stop_id
+FROM dzou2.dd_514_stop_angle s1, dzou2.dd_514_stop_angle s2
+WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
+)
 
-SELECT shape_id, direction_id, stop_id, geom, stop_sequence
-INTO dzou2.dd_514_stop_pattern
-FROM distinct_stop_patterns
-NATURAL JOIN gtfs_raph.stops_20171004
-ORDER BY shape_id, stop_sequence
+SELECT shape_id, direction_id, d.stop_id, geom, stop_sequence
+INTO crosic.dd_514_stop_pattern
+FROM distinct_stop_patterns d
+NATURAL JOIN gtfs_raph.stops_20171004 r
+WHERE d.stop_id NOT IN (SELECT stop_id FROM stops514) OR d.stop_id IN (6113, 15439, 15356, 13268)
+ORDER BY shape_id, stop_sequence; 
+
+
+-- run this to confirm that step 5 worked 
+WITH stops AS (
+SELECT DISTINCT(s1.stop_id) stop_id
+FROM crosic.dd_514_stop_pattern s1, crosic.dd_514_stop_pattern s2
+WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
+)
+
+SELECT DISTINCT(s.stop_id, r.stop_name)
+FROM stops s NATURAL JOIN gtfs_raph.stops r; 
+
 ```
 
 After running the query, the table named `dzou2.dd_514_stop_pattern` has the data of shape_id, direction_id, stop_name, and stop_sequence is the order of stops for each pattern.
@@ -113,8 +137,8 @@ After running the query, the table named `dzou2.dd_514_stop_pattern` has the dat
 SELECT shape_id, direction_id, stop_id, geom, stop_sequence,
         degrees(ST_Azimuth(geom, lag(geom,1) OVER (partition by shape_id, direction_id order by stop_sequence))) AS angle_previous,
         degrees(ST_Azimuth(geom, lag(geom,-1) OVER (partition by shape_id, direction_id order by stop_sequence))) AS angle_next
-INTO dzou2.dd_514_stop_angle
-FROM dzou2.dd_514_stop_pattern
+INTO crosic.dd_514_stop_angle
+FROM crosic.dd_514_stop_pattern;
 
 ```
 
@@ -124,21 +148,24 @@ The terminal stops, first `angle_previous` and the last `angle_next` of each pat
 ### Step 7: Add some columns that are needed in the next step
 
 ```sql
-ALTER TABLE dd_cis_514_angle
+CREATE TABLE crosic.dd_cis_514_angle AS (SELECT * FROM dzou2.dd_cis_514_angle); 
+ALTER TABLE crosic.dd_cis_514_angle DROP COLUMN id, DROP COLUMN stop_id, DROP COLUMN direction_id; 
+
+ALTER TABLE crosic.dd_cis_514_angle
 ADD COLUMN id SERIAL PRIMARY KEY,
-ADD COLUMN stop_id integer, ADD COLUMN direction_id smallint
+ADD COLUMN stop_id integer, ADD COLUMN direction_id smallint; 
 ```
 
 ### Step 8: Find the nearest GTFS stop for each CIS data and its direction
 
 ```sql
-UPDATE dzou2.dd_cis_514_angle cis
+UPDATE crosic.dd_cis_514_angle cis
 SET stop_id = nearest.stop_id, direction_id = nearest.direction_id
 FROM (SELECT b.id, stop_data.stop_id, stop_data.direction_id
-      FROM dzou2.dd_cis_514_angle b
+      FROM crosic.dd_cis_514_angle b
       CROSS JOIN LATERAL
-	(SELECT stop_id, direction_id
-         FROM dzou2.dd_514_stop_angle stops
+    (SELECT stop_id, direction_id
+         FROM crosic.dd_514_stop_angle stops
          WHERE
          b.angle_previous IS NOT NULL
          AND
@@ -165,8 +192,9 @@ When `angle_previous` is null, it is difficult to determine its direction and it
 ### Step 9: Finds the non-matches
 
 ```sql
-SELECT * FROM dzou2.dd_cis_514_angle
-WHERE direction_id IS NULL
+SELECT * FROM crosic.dd_cis_514_angle
+WHERE direction_id IS NULL; 
+
 ```
 There are 5567 rows outputted.
 
@@ -224,13 +252,19 @@ WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) sha
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '504'
-                                ORDER BY shape_id, stop_sequence)
+                                ORDER BY shape_id, stop_sequence), 
+stops504 AS (
+SELECT DISTINCT(s1.stop_id) stop_id
+FROM dzou2.dd_504_stop_angle s1, dzou2.dd_504_stop_angle s2
+WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
+)
 
 SELECT shape_id, direction_id, ARRAY_AGG(stop_name ORDER BY stop_sequence)
-FROM distinct_stop_patterns
-NATURAL JOIN gtfs_raph.stops_20171004
+FROM distinct_stop_patterns d
+NATURAL JOIN gtfs_raph.stops_20171004 r
+WHERE d.stop_id NOT IN (SELECT stop_id FROM stops504) OR d.stop_id IN (13050, 13209, 14186)
 GROUP BY shape_id, direction_id
-ORDER BY direction_id
+ORDER BY direction_id;
 ```
 
 Result:
@@ -259,13 +293,19 @@ WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) sha
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '504'
-                                ORDER BY shape_id, stop_sequence)
+                                ORDER BY shape_id, stop_sequence), 
+stops504 AS (
+SELECT DISTINCT(s1.stop_id) stop_id
+FROM dzou2.dd_504_stop_angle s1, dzou2.dd_504_stop_angle s2
+WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
+)
 
-SELECT shape_id, direction_id, stop_id, geom, stop_sequence
-INTO dzou2.dd_504_stop_pattern
-FROM distinct_stop_patterns
-NATURAL JOIN gtfs_raph.stops_20171004
-ORDER BY shape_id, stop_sequence
+SELECT shape_id, direction_id, d.stop_id, geom, stop_sequence
+INTO crosic.dd_504_stop_pattern
+FROM distinct_stop_patterns d
+NATURAL JOIN gtfs_raph.stops_20171004 r
+WHERE d.stop_id NOT IN (SELECT stop_id FROM stops504) OR d.stop_id IN (13050, 13209, 14186)
+ORDER BY shape_id, stop_sequence; 
 ```
 
 ### Step 6:  Created the table that having the GTFS stop data of route 514 on 10/04/2017 and its angles with previous and next points.
@@ -274,8 +314,9 @@ ORDER BY shape_id, stop_sequence
 SELECT shape_id, direction_id, stop_id, geom, stop_sequence,
         degrees(ST_Azimuth(geom, lag(geom,1) OVER (partition by shape_id, direction_id order by stop_sequence))) AS angle_previous,
         degrees(ST_Azimuth(geom, lag(geom,-1) OVER (partition by shape_id, direction_id order by stop_sequence))) AS angle_next
-INTO dzou2.dd_504_stop_angle
-FROM dzou2.dd_504_stop_pattern
+INTO crosic.dd_504_stop_angle
+FROM crosic.dd_504_stop_pattern;
+
 ```
 
 The terminal stops, first `angle_previous` and the last `angle_next` of each pattern will be NULL.
@@ -284,21 +325,25 @@ The terminal stops, first `angle_previous` and the last `angle_next` of each pat
 ### Step 7: Add some columns that are needed in the next step
 
 ```sql
-ALTER TABLE dd_cis_504_angle
+CREATE TABLE crosic.dd_cis_504_angle AS (SELECT * FROM dzou2.dd_cis_504_angle); 
+ALTER TABLE crosic.dd_cis_504_angle DROP COLUMN id, DROP COLUMN stop_id, DROP COLUMN direction_id; 
+
+ALTER TABLE crosic.dd_cis_504_angle
 ADD COLUMN id SERIAL PRIMARY KEY,
-ADD COLUMN stop_id integer, ADD COLUMN direction_id smallint
+ADD COLUMN stop_id integer, ADD COLUMN direction_id smallint; 
+
 ```
 
 ### Step 8: Find the nearest GTFS stop for each CIS data and its direction
 
 ```sql
-UPDATE dzou2.dd_cis_504_angle cis
+UPDATE crosic.dd_cis_504_angle cis
 SET stop_id = nearest.stop_id, direction_id = nearest.direction_id
 FROM (SELECT b.id, stop_data.stop_id, stop_data.direction_id
-      FROM dzou2.dd_cis_504_angle b
+      FROM crosic.dd_cis_504_angle b
       CROSS JOIN LATERAL
 	(SELECT stop_id, direction_id
-         FROM dzou2.dd_504_stop_angle stops
+         FROM crosic.dd_504_stop_angle stops
          WHERE
          b.angle_previous IS NOT NULL
          AND
@@ -309,14 +354,14 @@ FROM (SELECT b.id, stop_data.stop_id, stop_data.direction_id
            (b.angle_next BETWEEN stops.angle_next - 45 AND stops.angle_next + 45)))
         ORDER BY stops.geom <-> b.position LIMIT 1
         ) stop_data) nearest
-WHERE nearest.id = cis.id
+WHERE nearest.id = cis.id;
 ```
 
 ### Step 9: Finds the non-matches
 
 ```sql
-SELECT * FROM dzou2.dd_cis_504_angle
-WHERE direction_id IS NULL
+SELECT * FROM crosic.dd_cis_504_angle
+WHERE direction_id IS NULL; 
 ```
 There are 28679 rows outputted.
 
@@ -364,13 +409,13 @@ Get arrival time and departure time within 200m upstream, 10m downstream as per 
 First of all, we need a sequence of counting.
 
 ```sql
-CREATE SEQUENCE stops START 100
+CREATE SEQUENCE stops START 100; 
 ```
 
 Then, validating the sequence.
 
 ```sql
-SELECT nextval('stops')
+SELECT nextval('stops'); 
 ```
 
 At the same window:
@@ -396,8 +441,9 @@ ST_LineLocatePoint(line, geom) AS stop_to_line,
       THEN 'same'
       END) AS line_position,
 ST_Distance(position::geography, geom::geography) AS distance
-FROM line_data a, dzou2.dd_cis_514_angle b
-INNER JOIN gtfs_raph.stops_20171004 USING (stop_id)
+FROM line_data a, crosic.dd_cis_514_angle b
+INNER JOIN (SELECT * FROM gtfs_raph.stops_20171004 WHERE stop_id IN (SELECT DISTINCT stop_id FROM crosic.dd_514_stop_pattern)) r
+USING (stop_id)
 WHERE a.direction_id = b.direction_id
 ORDER BY vehicle, a.direction_id, date_time
 ),
@@ -417,9 +463,9 @@ ORDER BY vehicle, direction_id, date_time
 )
 
 SELECT MIN(date_time) AS arrival_time, MAX(date_time) AS departure_time, vehicle, stop_id, direction_id, array_agg(DISTINCT cis_id) AS cis_group
-INTO dzou2.match_stop_514
+INTO crosic.match_stop_514
 FROM stop_orders
-GROUP BY stop_order, vehicle, stop_id, direction_id
+GROUP BY stop_order, vehicle, stop_id, direction_id; 
 ```
 
 It outputs the `arrival_time` and `departure_time` for each vehicle in each stop in directions, and representing the earliest time record the GPS records at 200m upstream of the stop and lastest time record at 10m downstream.
@@ -465,11 +511,14 @@ Get arrival time and departure time within 200m upstream, 10m downstream as per 
 The same as the steps for route 514:
 
 ```sql
-CREATE SEQUENCE stops START 100
+DROP SEQUENCE IF EXISTS stops; 
+
+CREATE SEQUENCE stops START 100; 
+
 ```
 
 ```sql
-SELECT nextval('stops')
+SELECT nextval('stops'); 
 ```
 
 At the same window:
@@ -478,7 +527,7 @@ At the same window:
 WITH line_data AS(
 SELECT geom AS line, direction_id FROM gtfs_raph.shapes_geom_20171004
     INNER JOIN gtfs_raph.trips_20171004 USING (shape_id)
-    WHERE shape_id IN (690863, 690880)
+    WHERE shape_id IN (691040, 691042)
     GROUP BY line, shape_id, direction_id
     ORDER BY shape_id
 ),
@@ -495,8 +544,9 @@ ST_LineLocatePoint(line, geom) AS stop_to_line,
       THEN 'same'
       END) AS line_position,
 ST_Distance(position::geography, geom::geography) AS distance
-FROM line_data a, dzou2.dd_cis_504_angle b
-INNER JOIN gtfs_raph.stops_20171004 USING (stop_id)
+FROM line_data a, crosic.dd_cis_504_angle b
+INNER JOIN (SELECT * FROM gtfs_raph.stops_20171004 WHERE stop_id IN (SELECT DISTINCT stop_id FROM crosic.dd_504_stop_pattern)) r
+USING (stop_id)
 WHERE a.direction_id = b.direction_id
 ORDER BY vehicle, a.direction_id, date_time
 ),
@@ -516,9 +566,9 @@ ORDER BY vehicle, direction_id, date_time
 )
 
 SELECT MIN(date_time) AS arrival_time, MAX(date_time) AS departure_time, vehicle, stop_id, direction_id, array_agg(DISTINCT cis_id) AS cis_group
-INTO dzou2.match_stop_504
+INTO crosic.match_stop_504
 FROM stop_orders
-GROUP BY stop_order, vehicle, stop_id, direction_id
+GROUP BY stop_order, vehicle, stop_id, direction_id; 
 ```
 
 `bdit_data-sources/ttc/validating_cis_processing.ipynb` also shows the heat maps for route 504.
@@ -530,13 +580,13 @@ GROUP BY stop_order, vehicle, stop_id, direction_id
 First of all, we need a sequence of counting.
 
 ```sql
-CREATE SEQUENCE cis_lst START 100
+CREATE SEQUENCE cis_lst START 100; 
 ```
 
 Then, validating the sequence.
 
 ```sql
-SELECT nextval('cis_lst')
+SELECT nextval('cis_lst');
 ```
 
 At the same window:
@@ -546,7 +596,7 @@ WITH
 order_data AS (
 SELECT arrival_time, departure_time, vehicle, stop_id, direction_id, cis_group,
 rank() OVER (PARTITION BY vehicle ORDER BY arrival_time) AS order_id
-FROM match_stop_514
+FROM crosic.match_stop_514
 
 ORDER BY vehicle, arrival_time
 ),
@@ -579,9 +629,9 @@ HAVING count(*) > 10
 ORDER BY count DESC)
 
 SELECT a.trip_id, a.arrival_time, a.departure_time, a.cis_id, a.direction_id, a.vehicle, a.stop_id
-INTO dzou2.trips_cis_514
+INTO crosic.trips_cis_514
 FROM open_array a, good_trip_id b
-WHERE a.trip_id = b.trip_id
+WHERE a.trip_id = b.trip_id;
 ```
 
 The table `dzou2.trips_cis_514` stores the trip IDs assigned for each trip which has the more than 10 CIS data records, and `bdit_data-sources/ttc/validating_cis_processing.ipynb` has illustrated the reason of choosing 10 as the indicator.
@@ -597,11 +647,12 @@ SELECT nextval('cis_lst')
 At the same window:
 
 ```sql
+
 WITH
 order_data AS (
 SELECT arrival_time, departure_time, vehicle, stop_id, direction_id, cis_group,
 rank() OVER (PARTITION BY vehicle ORDER BY arrival_time) AS order_id
-FROM match_stop_504
+FROM crosic.match_stop_504
 
 ORDER BY vehicle, arrival_time
 ),
@@ -630,13 +681,15 @@ good_trip_id AS(
 SELECT trip_id, count(*), array_agg(cis_id) AS groups
 FROM open_array
 GROUP BY trip_id
-HAVING count(*) >= 10
+HAVING count(*) > 10
 ORDER BY count DESC)
 
 SELECT a.trip_id, a.arrival_time, a.departure_time, a.cis_id, a.direction_id, a.vehicle, a.stop_id
-INTO dzou2.trips_cis_504
+INTO crosic.trips_cis_504
 FROM open_array a, good_trip_id b
-WHERE a.trip_id = b.trip_id
+WHERE a.trip_id = b.trip_id;
+
+
 ```
 
 `bdit_data-sources/ttc/validating_cis_processing.ipynb` has illustrated the reason of filtering out the trips have less than 10 CIS data records.
@@ -662,13 +715,13 @@ SELECT ST_GeomFromText (
 ),
 
 trip_location AS (
-SELECT a.*, b.position FROM dzou2.trips_cis_514 a
-INNER JOIN dzou2.dd_cis_514_angle b ON a.cis_id = b.id
+SELECT a.*, b.position FROM crosic.trips_cis_514 a
+INNER JOIN crosic.dd_cis_514_angle b ON a.cis_id = b.id
 )
 
 SELECT trip_id, arrival_time, departure_time, cis_id, direction_id, vehicle, stop_id, ST_Within(position, frame) AS pilot_area
 INTO tf_cis_514
-FROM geo_frame, trip_location
+FROM geo_frame, trip_location;
 ```
 
 The table named `tf_cis_514` includes all the data from `trips_cis_514` and a column named `pilot_area` which indicates if the CIS data point is in the pilot area or not.
@@ -676,10 +729,10 @@ The table named `tf_cis_514` includes all the data from `trips_cis_514` and a co
 There are 9373 rows of data in `tf_cis_514` at this point.
 
 ```sql
-SELECT count(DISTINCT trip_id) FROM dzou2.tf_cis_514
+SELECT count(DISTINCT trip_id) FROM crosic.tf_cis_514;
 ```
 
-186 trips are remaining at this point.
+190 trips are remaining at this point.
 
 ### Step 2: Filtered out the trips linked to vehicles that spend less than 1 km or more than 4 km in the pilot area (Bathurst to Jarvis).
 
@@ -688,8 +741,8 @@ WITH trips AS(
 SELECT trip_id, arrival_time, departure_time, a.direction_id, a.vehicle, a.stop_id, pilot_area,
 ST_DistanceSphere(position,
 lag(position,1) OVER (partition by trip_id order by arrival_time)) AS distance
-FROM tf_cis_514 a
-INNER JOIN dzou2.dd_cis_514_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_514 a
+INNER JOIN crosic.dd_cis_514_angle b ON (a.cis_id = b.id)
 WHERE pilot_area = TRUE
 ),
 
@@ -709,7 +762,7 @@ WHERE total_distance_km < 1 OR total_distance_km > 4
 
 DELETE FROM tf_cis_514 a
 USING fail_trip_id
-WHERE a.trip_id = fail_trip_id.trip_id
+WHERE a.trip_id = fail_trip_id.trip_id; 
 ```
 
 The temporary table `fail_trip_id` stores the trip IDs which linked to vehicles that spend less than 1 km or more than 4 km in the pilot area (Bathurst to Jarvis). There are 6 trips fulfill the requirements, and 109 CIS data are affected after running the query.
@@ -724,8 +777,8 @@ There are 9264 rows of data in `tf_cis_514` at this point.
 ```sql
 WITH trips AS(
 SELECT trip_id, arrival_time, departure_time, a.direction_id, a.vehicle, a.stop_id, pilot_area
-FROM tf_cis_514 a
-INNER JOIN dzou2.dd_cis_514_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_514 a
+INNER JOIN crosic.dd_cis_514_angle b ON (a.cis_id = b.id)
 WHERE pilot_area = TRUE
 ),
 
@@ -746,7 +799,7 @@ WHERE time_diff > 100
 
 DELETE FROM tf_cis_514 a
 USING fail_trip_id
-WHERE a.trip_id = fail_trip_id.trip_id
+WHERE a.trip_id = fail_trip_id.trip_id; 
 ```
 
 The column `time_diff` in the temporary table `total_time` is the time (in minutes) of a vehicle spent in the pilot area; however, there is not any trip spent more than 100 minutes in the pilot area, so 0 rows are affected.
@@ -759,8 +812,8 @@ To know the longest time period for a vehicle to spend in the pilot area, using 
 ```sql
 WITH trips AS(
 SELECT trip_id, arrival_time, departure_time, a.direction_id, a.vehicle, a.stop_id, pilot_area
-FROM tf_cis_514 a
-INNER JOIN dzou2.dd_cis_514_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_514 a
+INNER JOIN crosic.dd_cis_514_angle b ON (a.cis_id = b.id)
 WHERE pilot_area = TRUE
 ),
 
@@ -773,7 +826,7 @@ GROUP BY trip_id, direction_id, vehicle
 ORDER BY trip_id, begin_time
 )
 
-SELECT MAX(time_diff) FROM total_time
+SELECT MAX(time_diff) FROM total_time; 
 ```
 
 The result output:
@@ -792,14 +845,14 @@ Also, there are 9264 rows of data in `tf_cis_514` at this point.
 ```sql
 WITH fail_trip_id AS(
 SELECT trip_id
-FROM tf_cis_514 a
-INNER JOIN dzou2.dd_cis_514_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_514 a
+INNER JOIN crosic.dd_cis_514_angle b ON (a.cis_id = b.id)
 WHERE run BETWEEN 60 AND 89
 )
 
 DELETE FROM tf_cis_514 a
 USING fail_trip_id
-WHERE a.trip_id = fail_trip_id.trip_id
+WHERE a.trip_id = fail_trip_id.trip_id;
 ```
 
 There is not a trip has the run number between 60 and 89, so 0 rows are affected after running the query.
@@ -842,18 +895,18 @@ The map of filtered trips:
 ```sql
 WITH geo_frame AS (
 SELECT ST_GeomFromText (
-'POLYGON((-79.40035615335398 43.63780813971652,-79.40593514810496 43.65184496379264,-79.38997064004832 43.655074211367626,
+'POLYGON((-79.40035615335398 43.63780813971652,-79.40593504810496 43.65184496379264,-79.38997064004832 43.655074211367626,
 -79.37452111612254 43.658241189360304,-79.36928544412547 43.64513751014725,-79.40035615335398 43.63780813971652))', 4326) AS frame
 ),
 
 trip_location AS (
-SELECT a.*, b.position FROM dzou2.trips_cis_504 a
-INNER JOIN dzou2.dd_cis_504_angle b ON a.cis_id = b.id
+SELECT a.*, b.position FROM crosic.trips_cis_504 a
+INNER JOIN crosic.dd_cis_504_angle b ON a.cis_id = b.id
 )
 
 SELECT trip_id, arrival_time, departure_time, cis_id, direction_id, vehicle, stop_id, ST_Within(position, frame) AS pilot_area
 INTO tf_cis_504
-FROM geo_frame, trip_location
+FROM geo_frame, trip_location;
 ```
 
 There are 47470 rows of data in `tf_cis_504` at this point.
@@ -865,8 +918,8 @@ WITH trips AS(
 SELECT trip_id, arrival_time, departure_time, a.direction_id, a.vehicle, a.stop_id, pilot_area,
 ST_DistanceSphere(position,
 lag(position,1) OVER (partition by trip_id order by arrival_time)) AS distance
-FROM tf_cis_504 a
-INNER JOIN dzou2.dd_cis_504_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_504 a
+INNER JOIN crosic.dd_cis_504_angle b ON (a.cis_id = b.id)
 WHERE pilot_area = TRUE
 ),
 
@@ -886,7 +939,7 @@ WHERE total_distance_km < 1 OR total_distance_km > 4
 
 DELETE FROM tf_cis_504 a
 USING fail_trip_id
-WHERE a.trip_id = fail_trip_id.trip_id
+WHERE a.trip_id = fail_trip_id.trip_id; 
 ```
 
 There are 2 trips fulfill the requirements, and 653 CIS data are affected after running the query.
@@ -895,7 +948,7 @@ Also, these CIS data all belong to one `trip_id` which is 345.
 There are 46817 rows of data in `tf_cis_504` at this point.
 
 ```sql
-SELECT count(DISTINCT trip_id) FROM dzou2.tf_cis_504
+SELECT count(DISTINCT trip_id) FROM crosic.tf_cis_504;
 ```
 
 605 trips are remaining at this point.
@@ -905,8 +958,8 @@ SELECT count(DISTINCT trip_id) FROM dzou2.tf_cis_504
 ```sql
 WITH trips AS(
 SELECT trip_id, arrival_time, departure_time, a.direction_id, a.vehicle, a.stop_id, pilot_area
-FROM tf_cis_504 a
-INNER JOIN dzou2.dd_cis_504_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_504 a
+INNER JOIN crosic.dd_cis_504_angle b ON (a.cis_id = b.id)
 WHERE pilot_area = TRUE
 ),
 
@@ -927,7 +980,7 @@ WHERE time_diff > 100
 
 DELETE FROM tf_cis_504 a
 USING fail_trip_id
-WHERE a.trip_id = fail_trip_id.trip_id
+WHERE a.trip_id = fail_trip_id.trip_id; 
 ```
 
 0 rows are affected.
@@ -941,8 +994,8 @@ To know the longest time period for a vehicle to spend in the pilot area, using 
 ```sql
 WITH trips AS(
 SELECT trip_id, arrival_time, departure_time, a.direction_id, a.vehicle, a.stop_id, pilot_area
-FROM tf_cis_504 a
-INNER JOIN dzou2.dd_cis_504_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_504 a
+INNER JOIN crosic.dd_cis_504_angle b ON (a.cis_id = b.id)
 WHERE pilot_area = TRUE
 ),
 
@@ -955,7 +1008,9 @@ GROUP BY trip_id, direction_id, vehicle
 ORDER BY trip_id, begin_time
 )
 
-SELECT MAX(time_diff) FROM total_time
+
+SELECT MAX(time_diff) FROM total_time; 
+
 ```
 
 The result output:
@@ -971,14 +1026,15 @@ Thus, the maximum time for a vehicle to spend in the pilot area is 32 minutes (r
 ```sql
 WITH fail_trip_id AS(
 SELECT trip_id
-FROM tf_cis_504 a
-INNER JOIN dzou2.dd_cis_504_angle b ON (a.cis_id = b.id)
+FROM crosic.tf_cis_504 a
+INNER JOIN crosic.dd_cis_504_angle b ON (a.cis_id = b.id)
 WHERE run BETWEEN 60 AND 89
 )
 
 DELETE FROM tf_cis_504 a
 USING fail_trip_id
-WHERE a.trip_id = fail_trip_id.trip_id
+WHERE a.trip_id = fail_trip_id.trip_id;
+
 ```
 
 0 rows are affected after running the query.
