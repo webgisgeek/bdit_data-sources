@@ -185,3 +185,5 @@ bluetooth/api/se_deviceclass.py
 
 .vscode
 bluetooth/api/psyconfig.cfg
+ttc/img/remove_non_service_514.PNG
+ttc/img/remove_non_service_504.PNG
