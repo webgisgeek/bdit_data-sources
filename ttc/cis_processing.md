@@ -66,17 +66,12 @@ WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) sha
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '514'
-                                ORDER BY shape_id, stop_sequence), 
-stops514 AS (
-SELECT DISTINCT(s1.stop_id) stop_id
-FROM dzou2.dd_514_stop_angle s1, dzou2.dd_514_stop_angle s2
-WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
-)
+                                ORDER BY shape_id, stop_sequence)
 
 SELECT shape_id, direction_id, ARRAY_AGG(stop_name ORDER BY stop_sequence)
 FROM distinct_stop_patterns d
 NATURAL JOIN gtfs_raph.stops_20171004 r
-WHERE d.stop_id NOT IN (SELECT stop_id FROM stops514) OR d.stop_id IN (6113, 15439, 15356, 13268)
+WHERE d.stop_id NOT IN (SELECT stop_id FROM crosic.non_service_stops)
 GROUP BY shape_id, direction_id
 ORDER BY direction_id;
 ```
@@ -97,25 +92,20 @@ Thus, there are 2 patterns of the stops, and each pattern has 2 directions. Tota
 ### Step 5: Obtained the order and position for each stop based on last step.
 
 ```sql
+DROP TABLE IF EXISTS crosic.dd_514_stop_pattern; 
 WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) shape_id, direction_id, stop_sequence, stop_id
                                 FROM gtfs_raph.trips_20171004
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '514'
-                                ORDER BY shape_id, stop_sequence), 
-stops514 AS (
-SELECT DISTINCT(s1.stop_id) stop_id
-FROM dzou2.dd_514_stop_angle s1, dzou2.dd_514_stop_angle s2
-WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
-)
+                                ORDER BY shape_id, stop_sequence)
 
 SELECT shape_id, direction_id, d.stop_id, geom, stop_sequence
 INTO crosic.dd_514_stop_pattern
 FROM distinct_stop_patterns d
 NATURAL JOIN gtfs_raph.stops_20171004 r
-WHERE d.stop_id NOT IN (SELECT stop_id FROM stops514) OR d.stop_id IN (6113, 15439, 15356, 13268)
+WHERE d.stop_id NOT IN (SELECT stop_id FROM non_service_stops)
 ORDER BY shape_id, stop_sequence; 
-
 
 -- run this to confirm that step 5 worked 
 WITH stops AS (
@@ -196,7 +186,7 @@ SELECT * FROM crosic.dd_cis_514_angle
 WHERE direction_id IS NULL; 
 
 ```
-There are 5567 rows outputted.
+There are 5558 rows outputted.
 
 
 ## Route 504
@@ -252,17 +242,12 @@ WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) sha
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '504'
-                                ORDER BY shape_id, stop_sequence), 
-stops504 AS (
-SELECT DISTINCT(s1.stop_id) stop_id
-FROM dzou2.dd_504_stop_angle s1, dzou2.dd_504_stop_angle s2
-WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
-)
+                                ORDER BY shape_id, stop_sequence)
 
 SELECT shape_id, direction_id, ARRAY_AGG(stop_name ORDER BY stop_sequence)
 FROM distinct_stop_patterns d
 NATURAL JOIN gtfs_raph.stops_20171004 r
-WHERE d.stop_id NOT IN (SELECT stop_id FROM stops504) OR d.stop_id IN (13050, 13209, 14186)
+WHERE d.stop_id NOT IN (SELECT stop_id FROM crosic.non_service_stops)
 GROUP BY shape_id, direction_id
 ORDER BY direction_id;
 ```
@@ -288,23 +273,19 @@ Thus, there are 11 patterns of stops of route 504, and 6 of them are in the dire
 ### Step 5: Obtained the order and position for each stop based on last step.
 
 ```sql
+DROP TABLE IF EXISTS crosic.dd_504_stop_pattern; 
 WITH distinct_stop_patterns AS (SELECT DISTINCT ON (shape_id, stop_sequence) shape_id, direction_id, stop_sequence, stop_id
                                 FROM gtfs_raph.trips_20171004
                                 NATURAL JOIN gtfs_raph.stop_times_20171004
                                 NATURAL JOIN gtfs_raph.routes_20171004
                                 WHERE route_short_name = '504'
-                                ORDER BY shape_id, stop_sequence), 
-stops504 AS (
-SELECT DISTINCT(s1.stop_id) stop_id
-FROM dzou2.dd_504_stop_angle s1, dzou2.dd_504_stop_angle s2
-WHERE s1.stop_id = s2.stop_id AND s1.direction_id <> s2.direction_id
-)
-
+                                ORDER BY shape_id, stop_sequence)
+                                
 SELECT shape_id, direction_id, d.stop_id, geom, stop_sequence
 INTO crosic.dd_504_stop_pattern
 FROM distinct_stop_patterns d
 NATURAL JOIN gtfs_raph.stops_20171004 r
-WHERE d.stop_id NOT IN (SELECT stop_id FROM stops504) OR d.stop_id IN (13050, 13209, 14186)
+WHERE d.stop_id NOT IN (SELECT stop_id FROM non_service_stops)
 ORDER BY shape_id, stop_sequence; 
 ```
 
@@ -360,10 +341,10 @@ WHERE nearest.id = cis.id;
 ### Step 9: Finds the non-matches
 
 ```sql
-SELECT * FROM crosic.dd_cis_504_angle
+SELECT COUNT(*) FROM crosic.dd_cis_504_angle
 WHERE direction_id IS NULL; 
 ```
-There are 28679 rows outputted.
+There are 28711 rows outputted.
 
 
 
@@ -987,7 +968,7 @@ WHERE a.trip_id = fail_trip_id.trip_id;
 
 There are 46817 rows of data in `tf_cis_504` at this point.
 
-605 trips are remaining at this point.
+628 trips are remaining at this point.
 
 To know the longest time period for a vehicle to spend in the pilot area, using the query
 
@@ -1017,9 +998,9 @@ The result output:
 
 |max|
 |---|
-|32|
+|35.6666666666667|
 
-Thus, the maximum time for a vehicle to spend in the pilot area is 32 minutes (route 504 on 10/04/2017).
+Thus, the maximum time for a vehicle to spend in the pilot area is about 35.67 minutes (route 504 on 10/04/2017).
 
 ### Step 4: Filtered out the trips with run numbers between 60 and 89.
 
