@@ -94,8 +94,7 @@ SELECT nextval('stops');
 WITH line_data AS(
 SELECT geom AS line, direction_id FROM shapes_geom_20171119_20171125
     INNER JOIN trips_20171119_20171125 USING (shape_id)
-    WHERE shape_id IN (695070, 695071, 695072, 695075, 695077, 695078, 695081, 695084, 695085, 695092, 695093
-)
+    WHERE shape_id IN (695081, 695070)
     GROUP BY line, shape_id, direction_id
     ORDER BY shape_id
 ),
@@ -380,7 +379,7 @@ SELECT nextval('stops');
 WITH line_data AS(
 SELECT geom AS line, direction_id FROM shapes_geom_20171119_20171125
     INNER JOIN trips_20171119_20171125 USING (shape_id)
-    WHERE shape_id IN (695251, 695252, 695253, 695254)
+    WHERE shape_id IN (695251, 695253)
     GROUP BY line, shape_id, direction_id
     ORDER BY shape_id
 ),
@@ -569,18 +568,8 @@ WHERE a.trip_id = fail_trip_id.trip_id;
 
 
 
-
-
-
-
-
-
-
-
-
-
--- validating cis create trip_ids thing 
-
+-- create trip_id table - from validating CIS processes notebook  
+DROP TABLE IF EXISTS cis_504_11192017_11252017_tripids;
 CREATE TEMPORARY SEQUENCE tripid_seq;
 SELECT setval('tripid_seq', 1);
 
