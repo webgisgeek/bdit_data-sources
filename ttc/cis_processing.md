@@ -353,7 +353,7 @@ There are 28711 rows outputted.
 ## Route 514
 
 ### Step 1 & 2:
-ST_LineLocatePoint to get the GPS point on the appropriate shapes_geom, then compared distance along line with matched stop to see if GPS record is before or after stop,
+ST_LineLocatePoint to get the GPS point on the appropriate shapes_geom, then compared distance along line with matched stop to see if GPS record is before or after a stop. In the line_data temporary table, we filtered for the longest route 514 shape_id in each direction. 
 
 ```sql
 WITH
@@ -398,7 +398,7 @@ Then, validating the sequence.
 ```sql
 SELECT nextval('stops'); 
 ```
-
+In the line_data temporary table, we filtered for the longest route 514 shape_id in each direction. 
 At the same window:
 
 ```sql
@@ -457,7 +457,7 @@ The heat maps of the result is on `bdit_data-sources/ttc/validating_cis_processi
 ## Route 504
 
 ### Step 1 & 2:
-ST_LineLocatePoint to get the GPS point on the appropriate shapes_geom, then compared distance along line with matched stop to see if GPS record is before or after stop,
+ST_LineLocatePoint to get the GPS point on the appropriate shapes_geom, then compared distance along line with matched stop to see if GPS record is before or after a stop. In the line_data temporary table, we filtered for the longest route 504 shape_id in each direction. 
 
 ```sql
 WITH
@@ -487,7 +487,7 @@ ORDER BY direction_id, date_time
 ```
 
 ### Step 3:
-Get arrival time and departure time within 200m upstream, 10m downstream as per above data, and grouped them at each stop.
+Get arrival time and departure time within 200m upstream, 10m downstream as per above data, and grouped them at each stop. 
 
 The same as the steps for route 514:
 
@@ -502,6 +502,7 @@ CREATE SEQUENCE stops START 100;
 SELECT nextval('stops'); 
 ```
 
+In the line_data temporary table, we filtered for the longest route 504 shape_id in each direction. 
 At the same window:
 
 ```sql
