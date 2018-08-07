@@ -112,7 +112,8 @@ ST_LineLocatePoint(line, geom) AS stop_to_line,
       END) AS line_position,
 ST_Distance(position::geography, geom::geography) AS distance
 FROM line_data a, cis_nov_504_angle b
-INNER JOIN stops_20171119_20171125 USING (stop_id)
+INNER JOIN INNER JOIN (SELECT * FROM stops_20171119_20171125 WHERE stop_id IN (SELECT DISTINCT stop_id FROM crosic.nov_504_stop_pattern)) r
+USING (stop_id)
 WHERE a.direction_id = b.direction_id
 ORDER BY vehicle, a.direction_id, date_time
 ),
@@ -397,7 +398,8 @@ ST_LineLocatePoint(line, geom) AS stop_to_line,
       END) AS line_position,
 ST_Distance(position::geography, geom::geography) AS distance
 FROM line_data a, cis_nov_514_angle b
-INNER JOIN stops_20171119_20171125 USING (stop_id)
+INNER JOIN (SELECT * FROM stops_20171119_20171125 WHERE stop_id IN (SELECT DISTINCT stop_id FROM crosic.nov_514_stop_pattern)) r
+USING (stop_id)
 WHERE a.direction_id = b.direction_id
 ORDER BY vehicle, a.direction_id, date_time
 ),
