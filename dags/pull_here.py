@@ -6,7 +6,7 @@ Slack notifications is raised when the airflow process fails.
 from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.operators.bash_operator import BashOperator
-from airflow.utils.trigger_rule import TriggerRule
+from airflow.operators.postgres_operator import PostgresOperator
 from airflow.hooks.base_hook import BaseHook
 from airflow.contrib.operators.slack_webhook_operator import SlackWebhookOperator
 from airflow.hooks.postgres_hook import PostgresHook
@@ -55,12 +55,27 @@ default_args = {'owner':'rdumas',
                         'LANG':'C.UTF-8'}
                 }
 
-dag = DAG('pull_here',default_args=default_args, schedule_interval='0 13 * * 1')
+dag = DAG('pull_here',default_args=default_args, schedule_interval=' 0 15 * * * ')
+#Every day at 11
+# dag = DAG('pull_here',default_args=default_args, schedule_interval='0 13 * * 1')
 # Run at 8 AM local time every monday
 
-t1 = BashOperator(
+date_to_pull = datetime.today().date() - timedelta(days=2)
+
+pull_data = BashOperator(
         task_id = 'pull_here',
-        bash_command = '/etc/airflow/data_scripts/.venv/bin/python3 /etc/airflow/data_scripts/here/traffic/here_api.py -d /etc/airflow/data_scripts/here/traffic/config.cfg', 
+        bash_command = '/etc/airflow/data_scripts/.venv/bin/python3 /etc/airflow/data_scripts/here/traffic/here_api.py -d /etc/airflow/data_scripts/here/traffic/config.cfg -s {{ params.date }} -e {{ params.date }} ', 
+        params = {'date':date_to_pull.strftime('%Y%m%d')},
         retries = 0,
         dag=dag,
         )
+
+agg_tti = PostgresOperator(sql='SELECT covid.generate_citywide_tti(%s)',
+                           task_id='aggregate_tti',
+                           postgres_conn_id='here_bot',
+                           parameters=(date_to_pull,),
+                           autocommit=True,
+                           retries = 0,
+                           dag=dag)
+
+pull_data >> agg_tti
