@@ -176,7 +176,7 @@ def send_data_to_database(ctx=None, datafile = None, dbsetting=None):
             #use the environment variable, which requires running subprocess
             #with env=os.environ.copy(), shell=True
             #Note that with shell=True, the command must be one long string.
-            cmd = '''psql $here_bot -v "ON_ERROR_STOP=1" -c {copy}'''.format(copy=copy)
+            cmd = '''psql $here_bot -v "ON_ERROR_STOP=1" -c "{copy}"'''.format(copy=copy)
             LOGGER.info(subprocess.check_output(cmd,
             stdin=unzip.stdout, env=os.environ.copy(), shell=True))
         else:
